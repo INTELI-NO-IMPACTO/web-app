@@ -1,0 +1,13 @@
+./next
+.next/
+# Ignore build output
+/dist
+/build
+/out
+# Ignore dependencies
+/node_modules
+/landing-page/node_modules
+/site-principal/node_modules
+/web-admin/node_modules
+/web-client/node_modules
+/web-dashboard/node_modules
