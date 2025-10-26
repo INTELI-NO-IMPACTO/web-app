@@ -1,56 +1,108 @@
-// src/pages/Landing.jsx
 import styled from "styled-components";
 import { Link } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { listArticles } from "../lib/api";
+import fotoArt from "../assets/fotoart.jpg";
 
 export default function Landing() {
-  const articles = useMemo(
-    () => [
-      { id: "a1", title: "Título do artigo...", date: "20/09/2025", excerpt: "Resumo do artigo Resumo do artigo Resumo do artigo" },
-      { id: "a2", title: "Título do artigo...", date: "20/09/2025", excerpt: "Resumo do artigo Resumo do artigo Resumo do artigo" },
-      { id: "a3", title: "Título do artigo...", date: "20/09/2025", excerpt: "Resumo do artigo Resumo do artigo Resumo do artigo" },
-      { id: "a1", title: "Título do artigo...", date: "20/09/2025", excerpt: "Resumo do artigo Resumo do artigo Resumo do artigo" },
-      { id: "a2", title: "Título do artigo...", date: "20/09/2025", excerpt: "Resumo do artigo Resumo do artigo Resumo do artigo" },
-      { id: "a3", title: "Título do artigo...", date: "20/09/2025", excerpt: "Resumo do artigo Resumo do artigo Resumo do artigo" },
-      { id: "a1", title: "Título do artigo...", date: "20/09/2025", excerpt: "Resumo do artigo Resumo do artigo Resumo do artigo" },
-      { id: "a2", title: "Título do artigo...", date: "20/09/2025", excerpt: "Resumo do artigo Resumo do artigo Resumo do artigo" },
-      { id: "a3", title: "Título do artigo...", date: "20/09/2025", excerpt: "Resumo do artigo Resumo do artigo Resumo do artigo" },
-    ],
-    []
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(null);
+
+  // helpers
+  const fmtDate = (iso) => {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString("pt-BR", { timeZone: "America/Recife" });
+    } catch {
+      return "";
+    }
+  };
+
+  const excerptFromMd = (md) => {
+    if (!md) return "";
+    const text = md
+      .replace(/`{1,3}[\s\S]*?`{1,3}/g, "")
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+      .replace(/\[[^\]]*\]\([^)]+\)/g, "")
+      .replace(/[#*_>~-]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    return text.length > 180 ? text.slice(0, 180) + "…" : text;
+  };
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      setErr(null);
+      try {
+        const data = await listArticles();
+        const mapped =
+          (data?.articles ?? []).map((a) => ({
+            id: a.id,
+            title: a.title,
+            date: fmtDate(a.created_at ?? a.updated_at ?? Date.now()),
+            excerpt: excerptFromMd(a.body_md),
+            image: a.link_image || fotoArt,
+          })) ?? [];
+        setArticles(mapped.slice(0, 6)); // mostra só os 6 mais recentes
+      } catch (e) {
+        setErr(e.message || "Erro ao carregar artigos");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const emptyHint = useMemo(
+    () => (!loading && !err && articles.length === 0),
+    [loading, err, articles.length]
   );
 
   return (
     <Page>
-      {/* Wrapper com máscara: após 85vh o conteúdo esvanece até ficar 100% transparente
-          (evita “entrar” sob a bottom bar). Ajuste o spread (120px) se quiser um fade maior/menor. */}
       <ContentMask>
         <Container>
           <SectionHeader>Artigos</SectionHeader>
 
-          <Feed>
-            {articles.map((a, i) => (
-              <ArticleItem to={`/articles/${a.id}`} key={`art-${a.id}-${i}`}>
-                <ArticleTitle>{a.title}</ArticleTitle>
-                <ArticleMeta>Publicação: {a.date}</ArticleMeta>
-                <ArticleExcerpt>{a.excerpt}</ArticleExcerpt>
-              </ArticleItem>
-            ))}
-          </Feed>
+          {loading && <Info>Carregando…</Info>}
+          {err && <ErrorBox>{err}</ErrorBox>}
+          {emptyHint && <Info>Nenhum artigo disponível.</Info>}
+
+          {!loading && !err && articles.length > 0 && (
+            <Feed>
+              {articles.map((a) => (
+                <ArticleItem to={`/articles/${a.id}`} key={`art-${a.id}`}>
+                  <Thumb>
+                    <img
+                      src={a.image}
+                      alt={`Capa do artigo ${a.title}`}
+                      loading="lazy"
+                    />
+                  </Thumb>
+                  <ArticleContent>
+                    <ArticleTitle>{a.title}</ArticleTitle>
+                    <ArticleMeta>Publicação: {a.date}</ArticleMeta>
+                    <ArticleExcerpt>{a.excerpt}</ArticleExcerpt>
+                  </ArticleContent>
+                </ArticleItem>
+              ))}
+            </Feed>
+          )}
 
           <SectionHeader as="h2">Denúncia</SectionHeader>
           <Panel>
             <SmallText>Você precisa fazer alguma denúncia?</SmallText>
             <SmallText>
-              Utilize <Strong>_____________________</Strong> como principal meio de contatar
-              uma denúncia segura para você.
+              Utilize <Strong>_____________________</Strong> como principal meio
+              de contatar uma denúncia segura para você.
             </SmallText>
-            <PrimaryButton to="/denuncia">Fazer denúncia</PrimaryButton>
+            <PrimaryButton to='https://wa.me/1133113556'>Fazer denúncia</PrimaryButton>
           </Panel>
         </Container>
       </ContentMask>
 
-      {/* Gradiente de segurança “por cima” (sobrepõe levemente o fundo perto da bottom bar).
-          Caso sua bottom bar tenha outra altura, ajuste --bottom-bar-h. */}
       <BottomFade aria-hidden />
     </Page>
   );
@@ -61,30 +113,17 @@ export default function Landing() {
 /* ============================= */
 
 const Page = styled.main`
-  /* Ajuste a altura da bottom bar se necessário */
   --bottom-bar-h: 68px;
-
   background: ${({ theme }) => theme.colors.background};
   color: ${({ theme }) => theme.colors.text};
-
-  /* Espaço final para nada ficar escondido atrás da bottom bar */
   padding: 1rem 0 calc(1rem + var(--bottom-bar-h));
 `;
 
-/* 
- * Mascara global de fade:
- * - até 85vh: conteúdo 100% opaco
- * - de 85vh até ~85vh+120px: transição para transparente
- * - após isso: completamente transparente
- */
-const ContentMask = styled.div`
-
-`;
+const ContentMask = styled.div``;
 
 const Container = styled.section`
   width: min(700px, 94%);
-  margin: 0 auto;
-  margin-bottom: 30px;
+  margin: 0 auto 30px;
 `;
 
 const SectionHeader = styled.h1`
@@ -99,8 +138,6 @@ const SectionHeader = styled.h1`
   margin-bottom: 14px;
 `;
 
-/* ----- Feed de artigos (notícias) ----- */
-/* Sem overflow interno! É a página que rola. */
 const Feed = styled.div`
   display: grid;
   gap: 14px;
@@ -108,31 +145,55 @@ const Feed = styled.div`
 `;
 
 const ArticleItem = styled(Link)`
-  display: block;
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 12px;
+  height: 150px;
   background: ${({ theme }) => theme.colors.surface};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 14px;
-  padding: 12px 14px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
   transition: border-color 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
 
   &:hover {
     border-color: ${({ theme }) => theme.colors.primary};
     transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
   }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const Thumb = styled.div`
+  background: ${({ theme }) =>
+    theme.name === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)"};
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const ArticleContent = styled.div`
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 `;
 
 const ArticleTitle = styled.h3`
   font-size: clamp(0.98rem, 1.9vw, 1.06rem);
   font-weight: 500;
   color: ${({ theme }) => theme.colors.heading};
-  margin-bottom: 6px;
 `;
 
 const ArticleMeta = styled.p`
   font-size: 0.9rem;
   opacity: 0.75;
-  margin-bottom: 6px;
 `;
 
 const ArticleExcerpt = styled.p`
@@ -141,7 +202,6 @@ const ArticleExcerpt = styled.p`
   opacity: 0.9;
 `;
 
-/* ----- Bloco de denúncia ----- */
 const Panel = styled.section`
   background: ${({ theme }) => theme.colors.surface};
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -177,18 +237,24 @@ const PrimaryButton = styled(Link)`
   &:hover {
     background: ${({ theme }) => theme.colors.primaryHover};
   }
-
-  &:focus-visible {
-    outline: 3px solid ${({ theme }) => theme.colors.focus};
-    outline-offset: 2px;
-    border-radius: 12px;
-  }
 `;
 
-/* 
- * Overlay de fade próximo à bottom bar (extra “polimento”).
- * Se sua bottom bar já tem um gradiente próprio, pode remover.
- */
+const Info = styled.p`
+  text-align: center;
+  opacity: 0.8;
+  padding: 1rem 0.5rem;
+`;
+
+const ErrorBox = styled.p`
+  text-align: center;
+  color: #b00020;
+  background: rgba(176, 0, 32, 0.08);
+  border: 1px solid rgba(176, 0, 32, 0.25);
+  border-radius: 10px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+`;
+
 const BottomFade = styled.div`
   position: fixed;
   left: 0;
@@ -198,8 +264,8 @@ const BottomFade = styled.div`
   pointer-events: none;
   background: linear-gradient(
     to top,
-      ${({ theme }) => theme.colors.background} 0%,
-      ${({ theme }) => theme.colors.background} 60%,
-      rgba(255, 255, 255, 0) 100% 
-  ); 
+    ${({ theme }) => theme.colors.background} 0%,
+    ${({ theme }) => theme.colors.background} 60%,
+    rgba(255, 255, 255, 0) 100%
+  );
 `;

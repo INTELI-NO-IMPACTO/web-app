@@ -1,50 +1,58 @@
-import { createContext, useContext, useEffect, useState } from "react";
+// src/context/AuthContext.jsx
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { loginReq, registerReq, meReq, logoutReq, tokenStore } from "../lib/api";
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
-/**
- * Provedor de autenticação global.
- * - Guarda o usuário logado e o token JWT.
- * - Permite login, logout e persistência entre reloads.
- */
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [booting, setBooting] = useState(true);
 
-  // carregar usuário salvo no localStorage ao iniciar
+  // carrega usuário se já há tokens no localStorage
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-    if (token && storedUser) {
-      setUser({ ...JSON.parse(storedUser), token });
-    }
+    (async () => {
+      try {
+        if (tokenStore.access || tokenStore.refresh) {
+          const u = await meReq();
+          setUser(u);
+        }
+      } catch {
+        // tokens inválidos/expirados
+      } finally {
+        setBooting(false);
+      }
+    })();
   }, []);
 
-  // login com token e info básica do usuário
-  const login = (token, info) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(info));
-    setUser({ ...info, token });
-  };
+  async function login({ email, password }) {
+    await loginReq({ email, password });
+    const u = await meReq();
+    setUser(u);
+    return u;
+  }
 
-  // logout e limpeza total
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  async function register(payload) {
+    await registerReq(payload);
+    const u = await meReq();
+    setUser(u);
+    return u;
+  }
+
+  async function logout() {
+    await logoutReq();
     setUser(null);
-  };
+  }
 
-  const isAuthenticated = !!user?.token;
-
-  return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, setUser, booting, login, register, logout, isAuthenticated: !!user }),
+    [user, booting]
   );
-};
 
-/**
- * Hook para acessar o contexto de autenticação.
- * Exemplo:
- * const { user, login, logout, isAuthenticated } = useAuth();
- */
-export const useAuth = () => useContext(AuthContext);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth deve ser usado dentro de <AuthProvider>");
+  return ctx;
+}
