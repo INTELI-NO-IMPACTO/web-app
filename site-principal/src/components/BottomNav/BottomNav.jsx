@@ -1,38 +1,59 @@
 import styled from "styled-components";
 import { NavLink } from "react-router-dom";
-import { BiBookBookmark } from "react-icons/bi";
-import { BiCategory } from "react-icons/bi";
-import { BiDoorOpen } from "react-icons/bi";
-import { BiChat } from "react-icons/bi";
-import { BiUser } from "react-icons/bi";
+import {
+  BiBookBookmark,
+  BiCategory,
+  BiChat,
+  BiUser,
+  BiGroup,
+} from "react-icons/bi";
+import { MdDashboard } from "react-icons/md";
 
 export default function BottomNav() {
+  // Recupera o papel salvo no login
+  const role = localStorage.getItem("user_role");
+
+  const isBeneficiario = role?.toLowerCase() === "beneficiario";
+
   return (
     <NavContainer>
-      <NavItem to="/chat">
-        <BiChat size={25} />
-        <span>Chat</span>
-      </NavItem>
+      {/* 🏠 Primeira aba muda entre Dashboard e Chat */}
+      {!isBeneficiario ? (
+        <NavItem to="/dashboard">
+          <MdDashboard size={25} />
+          <span>Dashboard</span>
+        </NavItem>
+      ) : (
+        <NavItem to="/chat">
+          <BiChat size={25} />
+          <span>Chat</span>
+        </NavItem>
+      )}
 
+      {/* 📚 Artigos */}
       <NavItem to="/articles">
         <BiBookBookmark size={25} />
         <span>Artigos</span>
       </NavItem>
 
+      {/* 🗂️ Início */}
       <NavItem to="/">
         <BiCategory size={25} />
         <span>Início</span>
       </NavItem>
 
-      <NavItem to="/profile">
-        <BiUser size={25} />
-        <span>Perfil</span>
-      </NavItem>
-
-      <NavItem to="/logout">
-        <BiDoorOpen size={25} />
-        <span>Sair</span>
-      </NavItem>
+      {/* 👤 Se for beneficiário → Perfil / Se não for → Beneficiários */}
+      {isBeneficiario ? (
+        <NavItem to="/profile">
+          <BiUser size={25} />
+          <span>Perfil</span>
+        </NavItem>
+      ) : (
+        <NavItem to="/beneficiarios">
+          <BiGroup size={25} />
+          <span>Beneficiários</span>
+        </NavItem>
+      )}
     </NavContainer>
   );
 }

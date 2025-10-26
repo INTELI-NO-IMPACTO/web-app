@@ -35,19 +35,19 @@ export default function WavesFixed() {
         {/* Vermelho */}
         <path
           d="M0,15 C10,28 20,45 12,60 C8,68 5,77 0,85 L0,100 L10,100 C22,90 28,78 26,64 C24,49 14,32 0,15 Z"
-          fill="#EA4335"
+          fill="#6535eaff"
           opacity="0.9"
         />
         {/* Amarelo */}
         <path
           d="M0,35 C8,45 16,56 18,66 C20,76 15,88 8,100 L0,100 L0,75 C3,67 5,58 3,48 C2,43 1,39 0,35 Z"
-          fill="#FBBC05"
+          fill="#fb054fff"
           opacity="0.9"
         />
         {/* Verde */}
         <path
           d="M0,55 C6,63 10,72 11,80 C12,87 10,94 7,100 L0,100 L0,82 C2,74 2,64 0,55 Z"
-          fill="#34A853"
+          fill="#345da8ff"
           opacity="0.9"
         />
       </Side>
@@ -62,11 +62,11 @@ export default function WavesFixed() {
         {/* Azul (espelhado via scaleX(-1) no CSS) */}
         <path
           d="M0,0 C15,18 12,35 0,50 L0,100 L22,100 C40,80 34,60 20,42 C10,29 7,14 0,0 Z"
-          fill="#4285F4"
+          fill="#8f42f4ff"
         />
         <path
           d="M0,15 C10,28 20,45 12,60 C8,68 5,77 0,85 L0,100 L10,100 C22,90 28,78 26,64 C24,49 14,32 0,15 Z"
-          fill="#EA4335"
+          fill="#5635eaff"
           opacity="0.9"
         />
         <path
@@ -76,7 +76,7 @@ export default function WavesFixed() {
         />
         <path
           d="M0,55 C6,63 10,72 11,80 C12,87 10,94 7,100 L0,100 L0,82 C2,74 2,64 0,55 Z"
-          fill="#34A853"
+          fill="#a83485ff"
           opacity="0.9"
         />
       </Side>

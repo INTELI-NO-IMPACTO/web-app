@@ -4,6 +4,7 @@ import { useLocation, matchPath } from "react-router-dom";
 import BottomNav from "./components/BottomNav/BottomNav";
 import Router from "./router.jsx";
 import WavesFixed from "./components/WavesFixed";
+import VLibras from "./components/VLibras";
 
 const Root = styled.div`
   min-height: 100dvh;
@@ -19,14 +20,17 @@ const Content = styled.div`
 export default function App() {
   const { pathname } = useLocation();
   const hideWaves = !!matchPath({ path: "/articles/:id", end: true }, pathname);
+  const hideBottomNav = !!matchPath({ path: "/login", end: true }, pathname) || !!matchPath({ path: "/register", end: true }, pathname);
 
   return (
     <Root>
       {!hideWaves && <WavesFixed />}
       <Content>
+        <VLibras />
         <Router />
-        <BottomNav />
+        {!hideBottomNav && <BottomNav />}
       </Content>
     </Root>
   );
 }
+

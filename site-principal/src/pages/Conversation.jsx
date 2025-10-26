@@ -1,8 +1,9 @@
 // src/pages/Conversation.jsx
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
+import { useParams, useNavigate } from "react-router-dom";
 
-/* ================== layout base (segue o padrão do Profile.jsx) ================== */
+/* ================== layout base ================== */
 
 const Page = styled.main`
   background: ${({ theme }) => theme.colors.background};
@@ -15,11 +16,10 @@ const Container = styled.section`
   margin: 0 auto;
 `;
 
-const Header = styled.h1`
-  text-align: center;
-  font-size: clamp(1.2rem, 2.2vw, 1.5rem);
-  font-weight: 500;
-  color: ${({ theme }) => theme.colors.heading};
+const HeaderBox = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   background: ${({ theme }) => theme.colors.surface};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 12px;
@@ -27,13 +27,20 @@ const Header = styled.h1`
   margin-bottom: 1rem;
 `;
 
-/* ================== chat card ================== */
+const HeaderTitle = styled.h1`
+  font-size: clamp(1.2rem, 2.2vw, 1.5rem);
+  font-weight: 500;
+  color: ${({ theme }) => theme.colors.heading};
+  margin: 0;
+`;
+
+
+/* ================== chat layout ================== */
 
 const ChatCard = styled.section`
   display: grid;
   grid-template-rows: 1fr auto;
   height: clamp(590px, 70vh, 820px);
-
   background: ${({ theme }) => theme.colors.surface};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 18px;
@@ -49,7 +56,6 @@ const Messages = styled.div`
   flex-direction: column;
   gap: 10px;
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
-  scrollbar-gutter: stable;
 `;
 
 const DayDivider = styled.div`
@@ -64,7 +70,7 @@ const DayDivider = styled.div`
   margin: 4px 0 2px;
 `;
 
-/* ================== mensagem ================== */
+/* ================== mensagens ================== */
 
 const Row = styled.div`
   display: grid;
@@ -88,42 +94,38 @@ const Avatar = styled.div`
 `;
 
 const Bubble = styled.div`
-  max-width: 78%;
+  max-width: ${({ $from }) => ($from === "me" ? "88%" : "78%")};
+  min-width: 40px;
   justify-self: ${({ $from }) => ($from === "me" ? "end" : "start")};
-  padding: 0.7rem 0.9rem;
-  line-height: 1.45;
-  font-size: 0.98rem;
+  padding: 0.85rem 1.1rem;
+  line-height: 1.5;
+  font-size: 1rem;
 
   color: ${({ theme, $from }) =>
     $from === "me" ? theme.colors.onPrimary : theme.colors.text};
   background: ${({ theme, $from }) =>
     $from === "me" ? theme.colors.primary : theme.colors.surfaceElevated};
 
-  /* cantos assimétricos (bolha iOS) */
   border-radius: ${({ $from }) =>
     $from === "me" ? "18px 18px 6px 18px" : "18px 18px 18px 6px"};
   border: 1px solid
     ${({ theme, $from }) =>
       $from === "me" ? "transparent" : theme.colors.border};
-  box-shadow: 0 1px 3px
-      ${({ theme }) =>
-        theme.name === "dark" ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.06)"},
-    inset 0 -1px 0
-      ${({ theme, $from }) =>
-        $from === "me"
-          ? "rgba(255,255,255,0.08)"
-          : theme.name === "dark"
-          ? "rgba(255,255,255,0.03)"
-          : "rgba(0,0,0,0.03)"};
   word-break: break-word;
+  white-space: pre-wrap;
+  transition: all 0.15s ease-in-out;
 `;
 
-const Meta = styled.time`
-  display: block;
-  margin-top: 4px;
-  font-size: 0.75rem;
+const Typing = styled.div`
+  font-size: 0.85rem;
   color: ${({ theme }) => theme.colors.textSecondary};
-  text-align: ${({ $from }) => ($from === "me" ? "right" : "left")};
+  font-style: italic;
+  margin-left: 36px;
+  animation: blink 1.4s infinite;
+  @keyframes blink {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
 `;
 
 /* ================== composer ================== */
@@ -137,7 +139,6 @@ const ComposerBox = styled.div`
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
-
   border: 1px solid ${({ theme }) => theme.colors.border};
   background: ${({ theme }) =>
     theme.name === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)"};
@@ -157,10 +158,6 @@ const Input = styled.input`
   &::placeholder {
     color: ${({ theme }) => theme.colors.textSecondary};
   }
-
-  &:focus {
-    box-shadow: ${({ theme }) => theme.shadows.inputFocus};
-  }
 `;
 
 const Send = styled.button`
@@ -174,84 +171,168 @@ const Send = styled.button`
   border: 1px solid transparent;
   background: transparent;
   color: ${({ theme }) => theme.colors.primary};
-    cursor: pointer;
-    box-shadow: none;
-    transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+  transition: color 0.2s ease;
 
   &:hover {
-    border-color: transparent;
-    background: transparent;
     color: ${({ theme }) => theme.colors.primaryHover};
-    box-shadow: none;
-  }
-
-  &:focus-visible {
-    outline: 3px solid ${({ theme }) => theme.colors.focus};
-    outline-offset: 2px;
-  }
-
-  svg {
-    display: block;
   }
 `;
-
-/* ================== mock data ================== */
-
-const seed = [
-  { id: 1, from: "other", text: "Exemplo chat", time: "09:20" },
-  { id: 2, from: "me", text: "Exemplo chat", time: "09:22" },
-  { id: 3, from: "other", text: "Exemplo chat", time: "09:25" },
-];
 
 /* ================== componente ================== */
 
 export default function Conversation() {
-  const [items, setItems] = useState(seed);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [assistantTyping, setAssistantTyping] = useState(false);
+  const [creatingChat, setCreatingChat] = useState(false);
   const endRef = useRef(null);
 
-  const onSend = (e) => {
-    e.preventDefault();
-    const value = text.trim();
-    if (!value) return;
-    setItems((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        from: "me",
-        text: value,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      },
-    ]);
-    setText("");
-  };
+  const USER_ID = localStorage.getItem("user_id") || "";
+  const token = localStorage.getItem("access_token");
 
+  // 🔹 Cria um session_id único (hash) e guarda no localStorage
+  const [sessionId] = useState(() => {
+    const key = `session_${id || "global"}`;
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const newId = Math.random().toString(36).substring(2, 10);
+    localStorage.setItem(key, newId);
+    return newId;
+  });
+
+  // 🔹 Carrega histórico do chat existente
+  useEffect(() => {
+    if (!id || id === "new") {
+      setLoading(false);
+      return;
+    }
+
+    async function fetchHistory() {
+      try {
+        const res = await fetch(
+          `http://127.0.0.1:8000/chat/history/${id}?limit=50`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          }
+        );
+
+        if (!res.ok) throw new Error("Erro ao carregar histórico");
+        const data = await res.json();
+
+        const formatted =
+          data.messages?.map((m, idx) => ({
+            id: idx,
+            from: m.role === "user" ? "me" : "other",
+            text: m.content,
+          })) ?? [];
+
+        setMessages(formatted);
+      } catch (err) {
+        console.error("Erro ao buscar histórico:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchHistory();
+  }, [id, token]);
+
+  // 🔹 Scroll automático
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [items.length]);
+  }, [messages.length, assistantTyping]);
+
+
+  // 🔹 Envia mensagem
+  const onSend = async (e) => {
+    e.preventDefault();
+    const value = text.trim();
+    if (!value || sending || !USER_ID) return;
+
+    const newMsg = { id: Date.now(), from: "me", text: value };
+    setMessages((prev) => [...prev, newMsg]);
+    setText("");
+    setSending(true);
+    setAssistantTyping(true);
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: value,
+          user_id: USER_ID,
+          session_id: sessionId,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erro ao enviar mensagem");
+      const data = await res.json();
+
+      await new Promise((r) => setTimeout(r, 400));
+
+      const botMsg = {
+        id: Date.now() + 1,
+        from: "other",
+        text: data.response || "Sem resposta do servidor.",
+      };
+
+      setMessages((prev) => [...prev, botMsg]);
+    } catch (err) {
+      console.error("Erro ao enviar mensagem:", err);
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now() + 99, from: "other", text: "❌ Erro ao obter resposta." },
+      ]);
+    } finally {
+      setAssistantTyping(false);
+      setSending(false);
+    }
+  };
+
+  if (loading)
+    return (
+      <Page>
+        <Container>
+          <p>Carregando conversa...</p>
+        </Container>
+      </Page>
+    );
 
   return (
     <Page>
       <Container>
-        <Header>Chat</Header>
+        <HeaderBox>
+          <HeaderTitle>Conversa</HeaderTitle>
+        </HeaderBox>
 
-        <ChatCard role="region" aria-label="Conversa">
+        <ChatCard>
           <Messages>
             <DayDivider>Hoje</DayDivider>
 
-            {items.map((m, idx) => {
-              const showAvatar = m.from !== "me";
-              return (
-                <Row key={m.id} $from={m.from}>
-                  {m.from === "me" ? <span /> : <Avatar $hide={!showAvatar}>•</Avatar>}
+            {messages.map((m) => (
+              <Row key={m.id} $from={m.from}>
+                {m.from === "me" ? <span /> : <Avatar>•</Avatar>}
+                <div>
+                  <Bubble $from={m.from}>{m.text}</Bubble>
+                </div>
+              </Row>
+            ))}
 
-                  <div>
-                    <Bubble $from={m.from}>{m.text}</Bubble>
-                    <Meta $from={m.from}>{m.time}</Meta>
-                  </div>
-                </Row>
-              );
-            })}
+            {assistantTyping && (
+              <Row $from="other">
+                <Avatar>•</Avatar>
+                <Typing>Assistente está digitando...</Typing>
+              </Row>
+            )}
 
             <div ref={endRef} />
           </Messages>
@@ -260,12 +341,15 @@ export default function Conversation() {
             <ComposerBox>
               <Input
                 aria-label="Mensagem"
-                placeholder="Digite sua mensagem…"
+                placeholder={
+                  sending ? "Aguardando resposta..." : "Digite sua mensagem…"
+                }
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                disabled={sending}
               />
-              <Send type="submit" aria-label="Enviar">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <Send type="submit" aria-label="Enviar" disabled={sending}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                 </svg>
               </Send>
