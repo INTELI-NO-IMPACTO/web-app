@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import fotoArt from "../assets/fotoart.jpg";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
 export default function Articles() {
   const [items, setItems] = useState([]);
@@ -50,8 +50,22 @@ export default function Articles() {
     async function load() {
       setLoading(true);
       setErr(null);
+      if (!API_BASE) {
+        setErr("URL da API não configurada (VITE_API_BASE_URL).");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const url = `${API_BASE}/articles?page=1&page_size=20`;
+        let url;
+        try {
+          url = new URL(`${API_BASE}/articles`);
+        } catch {
+          throw new Error("Configuração inválida de VITE_API_BASE_URL.");
+        }
+        url.searchParams.set("page", "1");
+        url.searchParams.set("page_size", "20");
+
         const res = await fetch(url, {
           method: "GET",
           signal: ac.signal,
@@ -61,7 +75,12 @@ export default function Articles() {
         if (!res.ok) {
           throw new Error(`Falha ao buscar artigos (${res.status})`);
         }
-        const data = await res.json();
+        let data;
+        try {
+          data = await res.json();
+        } catch {
+          throw new Error("Resposta inválida recebida da API de artigos");
+        }
         const mapped =
           (data?.articles ?? []).map((a) => ({
             id: a.id,
